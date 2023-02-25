@@ -1,56 +1,22 @@
-import requests
-import json
+import math
 
-# Set API endpoint URLs
-auth_url = 'https://api.tdameritrade.com/v1/oauth2/token'
-order_url = 'https://api.tdameritrade.com/v1/accounts/{}/orders'.format('YOUR_ACCOUNT_NUMBER')
+# Specify the dollar value to use
+dollar_value = 10000
 
-# Set API parameters
-data = {
-    'grant_type': 'refresh_token',
-    'refresh_token': 'YOUR_REFRESH_TOKEN',
-    'client_id': 'YOUR_CLIENT_ID@AMER.OAUTHAP'
-}
+# Get the current market price of AAPL
+symbol = "AAPL"
+price_info = td_client.get_quote(symbol)
+market_price = price_info[symbol]['lastPrice']
 
-# Send POST request to API endpoint to authenticate and obtain access token
-response = requests.post(auth_url, data=data)
+# Calculate the quantity to use based on the dollar value
+quantity = math.floor(dollar_value / market_price)
 
-# Extract access token from response
-access_token = response.json()['access_token']
-
-# Set API headers with access token
-headers = {
-    'Authorization': 'Bearer ' + access_token,
-    'Content-Type': 'application/json'
-}
-
-# Get current price of stock
-symbol = 'AAPL'
-price_url = 'https://api.tdameritrade.com/v1/marketdata/{}/quotes'.format(symbol)
-price_params = {'apikey': 'YOUR_CONSUMER_KEY'}
-price_response = requests.get(price_url, headers=headers, params=price_params)
-
-# Extract current price of stock from response
-current_price = price_response.json()[symbol]['lastPrice']
-
-# Get available buying power
-buying_power_url = 'https://api.tdameritrade.com/v1/accounts/{}/orders'.format('YOUR_ACCOUNT_NUMBER')
-buying_power_params = {'fields': 'positions,orders', 'apikey': 'YOUR_CONSUMER_KEY'}
-buying_power_response = requests.get(buying_power_url, headers=headers, params=buying_power_params)
-
-# Extract buying power from response
-buying_power = buying_power_response.json()['securitiesAccount']['currentBalances']['buyingPower']
-
-# Calculate quantity of shares to buy based on a percentage of the available buying power and the current price
-percent_of_buying_power = 0.15
-quantity = int(buying_power * percent_of_buying_power / current_price)
-
-# Set order parameters
+# Create the order
 order = {
     "orderType": "MARKET",
     "session": "NORMAL",
     "duration": "DAY",
-    "orderStrategyType": "TRIGGER",
+    "orderStrategyType": "SINGLE",
     "orderLegCollection": [
         {
             "instruction": "BUY",
@@ -63,15 +29,12 @@ order = {
     ],
     "childOrderStrategies": [
         {
+            "orderStrategyType": "TRIGGER",
             "orderType": "STOP",
-            "session": "NORMAL",
-            "duration": "DAY",
-            "stopPrice": {
-              "offsetValue": -0.05,
-              "offsetType": "PRICE",
-              "fromValue": "MARKET"
-            },
-            "orderStrategyType": "SINGLE",
+            "stopPriceLinkBasis": "MARK",
+            "stopPriceLinkType": "PERCENT",
+            "stopPriceOffset": -5,
+            "stopType": "STANDARD",
             "orderLegCollection": [
                 {
                     "instruction": "SELL",
@@ -84,19 +47,21 @@ order = {
             ]
         },
         {
+            "orderStrategyType": "TRIGGER",
             "orderType": "LIMIT",
-            "session": "NORMAL",
-            "price": {
-              "offsetValue": 0.05,
-              "offsetType": "PRICE",
-              "fromValue": "MARKET"
-            },
-            "duration": "DAY",
-            "orderStrategyType": "SINGLE",
+            "priceLinkBasis": "MARK",
+            "priceLinkType": "PERCENT",
+            "price": 5,
             "orderLegCollection": [
                 {
                     "instruction": "SELL",
                     "quantity": quantity,
                     "instrument": {
                         "symbol": "AAPL",
-                        "asset
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
+        }
+    ]
+}
