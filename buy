@@ -1,0 +1,102 @@
+import requests
+import json
+
+# Set API endpoint URLs
+auth_url = 'https://api.tdameritrade.com/v1/oauth2/token'
+order_url = 'https://api.tdameritrade.com/v1/accounts/{}/orders'.format('YOUR_ACCOUNT_NUMBER')
+
+# Set API parameters
+data = {
+    'grant_type': 'refresh_token',
+    'refresh_token': 'YOUR_REFRESH_TOKEN',
+    'client_id': 'YOUR_CLIENT_ID@AMER.OAUTHAP'
+}
+
+# Send POST request to API endpoint to authenticate and obtain access token
+response = requests.post(auth_url, data=data)
+
+# Extract access token from response
+access_token = response.json()['access_token']
+
+# Set API headers with access token
+headers = {
+    'Authorization': 'Bearer ' + access_token,
+    'Content-Type': 'application/json'
+}
+
+# Get current price of stock
+symbol = 'AAPL'
+price_url = 'https://api.tdameritrade.com/v1/marketdata/{}/quotes'.format(symbol)
+price_params = {'apikey': 'YOUR_CONSUMER_KEY'}
+price_response = requests.get(price_url, headers=headers, params=price_params)
+
+# Extract current price of stock from response
+current_price = price_response.json()[symbol]['lastPrice']
+
+# Get available buying power
+buying_power_url = 'https://api.tdameritrade.com/v1/accounts/{}/orders'.format('YOUR_ACCOUNT_NUMBER')
+buying_power_params = {'fields': 'positions,orders', 'apikey': 'YOUR_CONSUMER_KEY'}
+buying_power_response = requests.get(buying_power_url, headers=headers, params=buying_power_params)
+
+# Extract buying power from response
+buying_power = buying_power_response.json()['securitiesAccount']['currentBalances']['buyingPower']
+
+# Calculate quantity of shares to buy based on a percentage of the available buying power and the current price
+percent_of_buying_power = 0.15
+quantity = int(buying_power * percent_of_buying_power / current_price)
+
+# Set order parameters
+order = {
+    "orderType": "MARKET",
+    "session": "NORMAL",
+    "duration": "DAY",
+    "orderStrategyType": "TRIGGER",
+    "orderLegCollection": [
+        {
+            "instruction": "BUY",
+            "quantity": quantity,
+            "instrument": {
+                "symbol": "AAPL",
+                "assetType": "EQUITY"
+            }
+        }
+    ],
+    "childOrderStrategies": [
+        {
+            "orderType": "STOP",
+            "session": "NORMAL",
+            "duration": "DAY",
+            "stopPrice": {
+              "offsetValue": -0.05,
+              "offsetType": "PRICE",
+              "fromValue": "MARKET"
+            },
+            "orderStrategyType": "SINGLE",
+            "orderLegCollection": [
+                {
+                    "instruction": "SELL",
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": "AAPL",
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
+        },
+        {
+            "orderType": "LIMIT",
+            "session": "NORMAL",
+            "price": {
+              "offsetValue": 0.05,
+              "offsetType": "PRICE",
+              "fromValue": "MARKET"
+            },
+            "duration": "DAY",
+            "orderStrategyType": "SINGLE",
+            "orderLegCollection": [
+                {
+                    "instruction": "SELL",
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": "AAPL",
+                        "asset
