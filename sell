@@ -1,0 +1,67 @@
+import math
+
+# Specify the dollar value to use
+dollar_value = 10000
+
+# Get the current market price of AAPL
+symbol = "AAPL"
+price_info = td_client.get_quote(symbol)
+market_price = price_info[symbol]['lastPrice']
+
+# Calculate the quantity to use based on the dollar value
+quantity = math.floor(dollar_value / market_price)
+
+# Create the order
+order = {
+    "orderType": "MARKET",
+    "session": "NORMAL",
+    "duration": "DAY",
+    "orderStrategyType": "SINGLE",
+    "orderLegCollection": [
+        {
+            "instruction": "SELL_SHORT",
+            "quantity": quantity,
+            "instrument": {
+                "symbol": "AAPL",
+                "assetType": "EQUITY"
+            }
+        }
+    ],
+    "childOrderStrategies": [
+        {
+            "orderStrategyType": "TRIGGER",
+            "orderType": "STOP",
+            "stopPriceLinkBasis": "MARK",
+            "stopPriceLinkType": "PERCENT",
+            "stopPriceOffset": -5,
+            "stopType": "STANDARD",
+            "orderLegCollection": [
+                {
+                    "instruction": "BUY_TO_COVER",
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": "AAPL",
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
+        },
+        {
+            "orderStrategyType": "TRIGGER",
+            "orderType": "LIMIT",
+            "priceLinkBasis": "MARK",
+            "priceLinkType": "PERCENT",
+            "price": 5,
+            "orderLegCollection": [
+                {
+                    "instruction": "BUY_TO_COVER",
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": "AAPL",
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
+        }
+    ]
+}
