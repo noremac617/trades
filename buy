@@ -1,7 +1,15 @@
 import math
+import datetime
 
-# Specify the dollar value to use
-dollar_value = 10000
+# Specify the percent of available cash to use
+percent_cash = 50
+
+# Get the available cash in the account
+cash_info = td_client.get_account('YOUR_ACCOUNT_ID', fields=['availableFundsForTrading'])
+available_cash = cash_info['securitiesAccount']['currentBalances']['availableFundsForTrading']
+
+# Calculate the dollar value to use based on the percent of available cash
+dollar_value = available_cash * percent_cash / 100
 
 # Get the current market price of AAPL
 symbol = "AAPL"
@@ -10,6 +18,9 @@ market_price = price_info[symbol]['lastPrice']
 
 # Calculate the quantity to use based on the dollar value
 quantity = math.floor(dollar_value / market_price)
+
+# Set the cancel time to be 3:30pm ET
+cancel_time = datetime.datetime.now().replace(hour=15, minute=55, second=0, microsecond=0).isoformat()
 
 # Create the order
 order = {
@@ -62,6 +73,24 @@ order = {
                     }
                 }
             ]
+        },
+        {
+            "orderStrategyType": "SINGLE",
+            "orderType": "MARKET",
+            "session": "NORMAL",
+            "duration": "DAY",
+            "orderLegCollection": [
+                {
+                    "instruction": "SELL",
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": "AAPL",
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
         }
-    ]
+    ],
+    "cancelTime": cancel_time
 }
+
